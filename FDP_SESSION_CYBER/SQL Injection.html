@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Injection — Login Bypass Demo</title>
+<style>
+  :root{
+    --card:#FDFEFF; --soft:#EFF3FA; --soft2:#E6ECF6;
+    --ink:#273448; --muted:#5A6A82; --faint:#94A2B6;
+    --blue:#2E63CE; --blue-soft:#E3EAFA; --blue-line:#BBCEEF;
+    --orange:#D4863B; --orange-soft:#FBEFDF; --orange-line:#F0D5B0;
+    --good:#2C9566; --good-soft:#DCF0E7; --good-line:#AEDCC5;
+    --bad:#CF6A33; --bad-soft:#FAEADD; --bad-line:#F0CFAE;
+    --red:#C6452E;
+    --line:#D3DCEA; --line2:#E1E7F2;
+    --code-bg:#1B2436; --code-line:#33405A; --code-txt:#CAD6EA;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(162deg,#EBEFF6,#DDE5F0 55%,#D6E0ED);
+       color:var(--ink);font-family:var(--sans);line-height:1.5;padding:26px 18px 60px;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{text-align:center;margin-bottom:18px}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--blue)}
+  h1{font-size:29px;margin:10px 0 6px;font-weight:700;color:#20303F}
+  .sub{color:var(--muted);font-size:15px;max-width:680px;margin:0 auto}
+  .warn{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:11.5px;color:#8A5A14;background:var(--orange-soft);
+        border:1px solid var(--orange-line);padding:4px 12px;border-radius:999px}
+
+  .modebar{display:flex;align-items:center;gap:14px;justify-content:center;margin:18px 0}
+  .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(40,54,69,.06)}
+  .seg button{font-family:var(--sans);font-size:14px;font-weight:600;border:none;background:none;color:var(--muted);
+              padding:9px 18px;border-radius:9px;cursor:pointer;transition:.15s}
+  .seg button.on.vuln{background:var(--bad);color:#fff}
+  .seg button.on.safe{background:var(--good);color:#fff}
+  .modehint{font-size:13px;color:var(--muted)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(40,54,69,.08)}
+  .p-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--soft);border-bottom:1px solid var(--line)}
+  .p-head .h{font-weight:600;font-size:14.5px}
+  .p-head .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
+  .p-body{padding:22px}
+
+  /* login form */
+  .login-card{max-width:360px;margin:0 auto;text-align:center}
+  .brand{font-weight:700;font-size:20px;color:var(--ink);margin-bottom:2px}
+  .brand .sm{color:var(--faint);font-weight:400;font-size:12px;font-family:var(--mono);display:block;margin-top:2px}
+  .field{text-align:left;margin-top:16px}
+  .field label{font-size:12.5px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .field input{width:100%;margin-top:5px;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
+               font-family:var(--mono);font-size:13.5px;color:#33465A;background:#FCFDFF;outline:none;transition:.15s}
+  .field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .loginbtn{width:100%;margin-top:18px;padding:12px;border:none;border-radius:9px;background:var(--blue);color:#fff;
+            font-family:var(--sans);font-weight:600;font-size:15px;cursor:pointer;transition:.15s;box-shadow:0 4px 12px rgba(46,99,206,.26)}
+  .loginbtn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+
+  .quick{margin-top:20px}
+  .quick .lbl{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:left}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--soft);
+        color:var(--ink);cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--blue-line);background:var(--blue-soft)}
+  .chip.attack{border-color:var(--orange-line);background:var(--orange-soft);color:#8A5A14}
+
+  .users{margin-top:20px;border-top:1px solid var(--line2);padding-top:14px}
+  .users .lbl{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:left}
+  table{width:100%;font-family:var(--mono);font-size:12.5px;color:var(--muted);border-collapse:collapse}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line2)}
+  th{color:var(--ink);font-weight:700}
+
+  /* behind the scenes */
+  .code{background:linear-gradient(180deg,#1E2940,#1A2334);border:1px solid var(--code-line);border-radius:10px;
+        padding:15px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;color:var(--code-txt);white-space:pre-wrap;word-break:break-word}
+  .code .kw{color:#73A9FF}.code .str{color:#F0B274}.code .inj{color:#FF9D6B;background:rgba(207,106,51,.22);border-radius:3px;padding:0 2px}
+  .code .cmt{color:#5E7490;text-decoration:line-through;opacity:.8}.code .param{color:#6FD0B0}
+  .seclabel{font-family:var(--mono);font-size:11px;color:var(--muted);margin:16px 0 8px;letter-spacing:1px;text-transform:uppercase}
+  .rows{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:12.5px;color:#3A4A5B;min-height:40px}
+  .verdict{margin-top:14px;border-radius:10px;padding:13px 16px;font-size:14.5px;font-weight:600;display:none}
+  .verdict.bypass{background:var(--bad-soft);border:1px solid var(--bad-line);color:#7A3A18}
+  .verdict.ok{background:var(--good-soft);border:1px solid var(--good-line);color:#1C5E3E}
+  .verdict.fail{background:var(--soft);border:1px solid var(--line);color:var(--muted)}
+  .explain{margin-top:12px;background:var(--orange-soft);border:1px solid var(--orange-line);border-left:4px solid var(--orange);
+           border-radius:10px;padding:12px 15px;font-size:13.5px;color:#5A4A2E;display:none}
+  .explain b{color:#3A2E16}
+  .ph{color:var(--faint);font-family:var(--mono);font-size:12.5px;text-align:center;padding:16px}
+
+  footer{text-align:center;color:var(--faint);font-size:12px;margin-top:24px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Web Security · Live Demo</div>
+    <h1>SQL Injection — Login Bypass</h1>
+    <p class="sub">Type credentials (or a payload) and log in. The right panel shows the SQL query the app builds and what the database returns. Flip the mode to see the secure version block the attack.</p>
+    <div class="warn">⚠ Deliberately vulnerable — training only. Fake app, fake data, no real backend.</div>
+  </header>
+
+  <div class="modebar">
+    <div class="seg">
+      <button id="mVuln" class="on vuln">Vulnerable (string concat)</button>
+      <button id="mSafe">Secure (parameterised)</button>
+    </div>
+    <span class="modehint" id="modehint">The app glues your input straight into the SQL — injectable.</span>
+  </div>
+
+  <div class="grid">
+    <!-- LOGIN -->
+    <div class="panel">
+      <div class="p-head"><div class="h">🔐 ACME Demo Portal</div></div>
+      <div class="p-body">
+        <div class="login-card">
+          <div class="brand">Sign in<span class="sm">internal.acme-demo.local</span></div>
+          <div class="field"><label>Username</label><input id="user" autocomplete="off" placeholder="username"></div>
+          <div class="field"><label>Password</label><input id="pass" autocomplete="off" placeholder="password"></div>
+          <button class="loginbtn" id="loginBtn">Log in</button>
+        </div>
+
+        <div class="quick">
+          <div class="lbl">Quick-fill</div>
+          <div class="chips">
+            <button class="chip" data-u="admin" data-p="S3cr3t!">Valid: admin / S3cr3t!</button>
+            <button class="chip" data-u="admin" data-p="wrongpass">Wrong password</button>
+            <button class="chip attack" data-u="' OR 1=1--" data-p="x">' OR 1=1--</button>
+            <button class="chip attack" data-u="admin'--" data-p="x">admin'--</button>
+          </div>
+        </div>
+
+        <div class="users">
+          <div class="lbl">users table (demo data)</div>
+          <table>
+            <tr><th>username</th><th>password</th><th>role</th></tr>
+            <tr><td>admin</td><td>S3cr3t!</td><td>administrator</td></tr>
+            <tr><td>alice</td><td>alicepw</td><td>staff</td></tr>
+            <tr><td>bob</td><td>bobpw</td><td>staff</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BEHIND THE SCENES -->
+    <div class="panel">
+      <div class="p-head"><div class="h"><span class="dot" id="modeDot" style="background:var(--bad)"></span>Behind the scenes</div></div>
+      <div class="p-body">
+        <div class="seclabel">SQL query sent to the database</div>
+        <div class="code" id="queryBox"><span class="ph">Enter credentials and click Log in.</span></div>
+
+        <div class="seclabel">Rows returned</div>
+        <div class="rows" id="rowsBox"><span class="ph">—</span></div>
+
+        <div class="verdict" id="verdict"></div>
+        <div class="explain" id="explain"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>FDP · Cyber Security — SQL injection teaching demo</footer>
+</div>
+
+<script>
+const USERS=[
+  {username:'admin', password:'S3cr3t!', role:'administrator'},
+  {username:'alice', password:'alicepw', role:'staff'},
+  {username:'bob',   password:'bobpw',   role:'staff'},
+];
+let secure=false;
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+/* mode toggle */
+function setMode(sec){
+  secure=sec;
+  $('mVuln').classList.toggle('on',!sec);$('mVuln').classList.toggle('vuln',!sec);
+  $('mSafe').classList.toggle('on',sec);$('mSafe').classList.toggle('safe',sec);
+  $('modeDot').style.background=sec?'var(--good)':'var(--bad)';
+  $('modehint').textContent=sec
+    ? 'Input is bound as a parameter — never parsed as SQL.'
+    : 'The app glues your input straight into the SQL — injectable.';
+  clearOut();
+}
+$('mVuln').onclick=()=>setMode(false);
+$('mSafe').onclick=()=>setMode(true);
+
+/* quick-fill */
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick=()=>{$('user').value=c.dataset.u;$('pass').value=c.dataset.p;clearOut();};
+});
+
+function clearOut(){
+  $('queryBox').innerHTML='<span class="ph">Enter credentials and click Log in.</span>';
+  $('rowsBox').innerHTML='<span class="ph">—</span>';
+  $('verdict').style.display='none';$('explain').style.display='none';
+}
+
+/* detect injection in the username */
+function analyze(u,p){
+  const hasQuote=u.includes("'");
+  const hasComment=u.includes('--');
+  const alwaysTrue=/'?\s*or\s+'?1'?\s*=\s*'?1'?/i.test(u);
+  const injected=hasQuote && (alwaysTrue || hasComment);
+  return {hasQuote,hasComment,alwaysTrue,injected};
+}
+
+/* run the "database" */
+function login(){
+  const u=$('user').value, p=$('pass').value;
+  if(!u && !p){clearOut();return;}
+  const a=analyze(u,p);
+
+  if(secure){
+    // parameterised: inputs are literal values, never SQL
+    $('queryBox').innerHTML =
+      '<span class="kw">SELECT</span> * <span class="kw">FROM</span> users\n'
+      +'<span class="kw">WHERE</span> username = <span class="param">?</span> <span class="kw">AND</span> password = <span class="param">?</span>\n'
+      +'<span class="cmt" style="text-decoration:none;opacity:1;color:#8FB8FF">-- bound params: </span>'
+      +'<span class="str">['+esc(u)+']</span>, <span class="str">['+esc(p)+']</span>';
+    const match=USERS.find(x=>x.username===u && x.password===p);
+    showRows(match?[match]:[]);
+    if(match) verdict('ok','✅ Logged in as '+match.username+' ('+match.role+')',
+      'Legitimate login: the username and password matched a real row. The same input was treated as <b>data</b>, so there is nothing to inject.');
+    else verdict('fail','❌ Login failed',
+      a.injected
+        ? 'The payload was treated as a <b>literal username</b>. The database looked for a user literally named <b>'+esc(u)+'</b>, found none, and rejected the login. <b>Parameterisation defeats the injection.</b>'
+        : 'No matching username and password. Correct, safe behaviour.');
+    return;
+  }
+
+  // vulnerable: string concatenation
+  const queryHtml =
+    '<span class="kw">SELECT</span> * <span class="kw">FROM</span> users\n'
+    +'<span class="kw">WHERE</span> username = <span class="str">\'</span><span class="'+(a.injected?'inj':'str')+'">'+esc(u)+'</span>'
+    + buildTail(u,p,a);
+  $('queryBox').innerHTML=queryHtml;
+
+  let rows=[], bypass=false, who=null;
+  if(a.injected && a.alwaysTrue){
+    rows=USERS.slice(); who=rows[0]; bypass=true;          // OR 1=1 → all rows → first (admin)
+  } else if(a.injected && a.hasComment){
+    const target=u.split("'")[0];                           // admin'-- → match 'admin', password commented out
+    const m=USERS.find(x=>x.username===target);
+    if(m){rows=[m];who=m;bypass=true;}
+  } else {
+    const m=USERS.find(x=>x.username===u && x.password===p);// normal credential check
+    if(m){rows=[m];who=m;}
+  }
+  showRows(rows);
+
+  if(bypass) verdict('bypass','⚠ ACCESS GRANTED — logged in as '+who.username+' ('+who.role+')',
+    a.alwaysTrue
+      ? 'The <b>\'</b> closed the username string, <b>OR 1=1</b> made the condition always true for every row, and <b>--</b> commented out the password check. The database returned all users and logged you in as the first one — <b>no valid credentials needed</b>.'
+      : 'The <b>\'</b> closed the string and <b>--</b> commented out the <b>AND password</b> check, so the query matched the <b>'+esc(who.username)+'</b> row with no password. This is an authentication bypass.');
+  else if(who) verdict('ok','✅ Logged in as '+who.username+' ('+who.role+')',
+    'A normal, legitimate login — the username and password matched a row. Try an attack payload to see the difference.');
+  else verdict('fail','❌ Login failed','No row matched. Try the <b>\' OR 1=1--</b> quick-fill to see the bypass.');
+}
+
+function buildTail(u,p,a){
+  // the " AND password = '...'" part, commented out (struck through) if the payload injected a --
+  const tail=' <span class="kw">AND</span> password = <span class="str">\''+esc(p)+'\'</span>';
+  if(a.injected && a.hasComment){
+    return '<span class="cmt">\''+tail.replace(/<[^>]+>/g,'')+'</span>';
+  }
+  return '<span class="str">\'</span>'+tail;
+}
+
+function showRows(rows){
+  if(!rows.length){$('rowsBox').innerHTML='<span style="color:var(--faint)">0 rows — no match</span>';return;}
+  let h=rows.length+' row'+(rows.length>1?'s':'')+' returned:<br>';
+  h+=rows.map(r=>'&nbsp;&nbsp;'+r.username+' · '+r.role).join('<br>');
+  $('rowsBox').innerHTML=h;
+}
+
+function verdict(kind,title,note){
+  const v=$('verdict');v.style.display='block';v.className='verdict '+kind;v.textContent=title;
+  const e=$('explain');e.style.display='block';e.innerHTML=note;
+  e.style.borderLeftColor=kind==='bypass'?'var(--bad)':kind==='ok'?'var(--good)':'var(--orange)';
+  e.style.background=kind==='bypass'?'var(--bad-soft)':kind==='ok'?'var(--good-soft)':'var(--orange-soft)';
+  e.style.borderColor=kind==='bypass'?'var(--bad-line)':kind==='ok'?'var(--good-line)':'var(--orange-line)';
+  e.style.color=kind==='bypass'?'#7A3A18':kind==='ok'?'#1C5E3E':'#5A4A2E';
+}
+
+$('loginBtn').onclick=login;
+$('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body>
+</html>

@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vulnerability Assessment Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f7fb; --card:#fff; --ink:#14202e; --muted:#5b6b7f; --line:#dde4ee;
+  --blue:#2563c9; --blue-bg:#e4effd; --green:#1f8a4c; --green-bg:#def3e6;
+  --crit:#b3261e; --crit-bg:#fde7e5; --high:#c25a00; --high-bg:#fff0e0;
+  --med:#a07800; --med-bg:#fff8d6; --low:#2d6aa8; --low-bg:#e6f0fb;
+  --term:#0f1722; --term-ink:#cfe3ff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
+header{background:linear-gradient(135deg,#123a73,#1f5fbf);color:#fff;padding:26px 28px 22px}
+header h1{margin:0 0 4px;font-size:24px;font-weight:700;letter-spacing:-.01em}
+header p{margin:0;opacity:.85;font-size:14px;max-width:900px}
+.wrap{max-width:1320px;margin:0 auto;padding:18px 22px 40px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tab{border:1px solid var(--line);background:var(--card);padding:10px 14px;border-radius:10px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);display:flex;gap:8px;align-items:center}
+.tab .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--line);color:var(--ink);font-size:12px}
+.tab.on{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.tab.on .n{background:var(--blue);color:#fff}
+.intro{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:14px}
+.intro h2{margin:0 0 2px;font-size:18px}
+.intro p{margin:0;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted);position:relative}
+.step b{display:block;color:var(--ink);font-size:13px}
+.step.active{border-color:var(--blue);background:var(--blue-bg)}
+.step.done{border-color:#9fd3b2;background:var(--green-bg)}
+.step.done b::after{content:" ✓";color:var(--green)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h3{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.asset{border:1px solid var(--line);border-radius:10px;padding:9px 10px;display:flex;gap:9px;align-items:center;transition:.3s}
+.asset .ic{width:36px;height:36px;border-radius:8px;background:var(--blue-bg);color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:11px;flex:none}
+.asset .nm{font-weight:600;font-size:13px;line-height:1.25}
+.asset .ad{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.asset.found{border-color:#f0b9b4;background:#fffafa}
+.asset.found .ic{background:var(--crit-bg);color:var(--crit)}
+.asset.clean{border-color:#9fd3b2;background:#f6fcf8}
+.asset.clean .ic{background:var(--green-bg);color:var(--green)}
+.asset .bd{margin-left:auto;font-size:11px;font-weight:700;border-radius:20px;padding:1px 7px;background:var(--crit);color:#fff;display:none}
+.asset.found .bd{display:inline-block}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button.btn{font:inherit;font-weight:600;font-size:13.5px;border-radius:9px;padding:9px 14px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer}
+button.btn.alt{background:#fff;color:var(--blue)}
+button.btn.grn{background:var(--green);border-color:var(--green)}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+.speed{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-left:auto}
+.term{background:var(--term);color:var(--term-ink);font-family:'JetBrains Mono',monospace;font-size:12px;border-radius:10px;padding:12px;height:290px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.term .ph{color:#7fb3ff;font-weight:500}
+.term .ok{color:#7ee2a8}.term .bad{color:#ff8f86}.term .warn{color:#ffd27a}.term .dim{color:#7d8ea3}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.sbox{border-radius:10px;padding:8px 10px;text-align:center}
+.sbox .v{font-size:22px;font-weight:700;line-height:1.1}
+.sbox .l{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.s-c{background:var(--crit-bg);color:var(--crit)}.s-h{background:var(--high-bg);color:var(--high)}
+.s-m{background:var(--med-bg);color:var(--med)}.s-l{background:var(--low-bg);color:var(--low)}
+.risk{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:13px}
+.bar{flex:1;height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f0b400,#d9480f,#b3261e);transition:width .6s}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.f{cursor:pointer}tr.f:hover td{background:#f8fafd}
+.pill{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.p-Critical{background:var(--crit-bg);color:var(--crit)}.p-High{background:var(--high-bg);color:var(--high)}
+.p-Medium{background:var(--med-bg);color:var(--med)}.p-Low{background:var(--low-bg);color:var(--low)}
+.st{font-size:11.5px;font-weight:600;white-space:nowrap}
+.st.open{color:var(--crit)}.st.fix{color:var(--high)}.st.res{color:var(--green)}
+tr.det td{background:#f8fafd;font-size:12.5px;color:#33445a}
+tr.det .k{font-weight:600;color:var(--ink)}
+.empty{color:var(--muted);font-size:13px;padding:24px 4px;text-align:center}
+.lab{margin-top:14px}
+.lab .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lab label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:6px 0 3px}
+.lab input,.lab textarea{width:100%;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:8px;border:1px solid var(--line);border-radius:8px}
+.lab textarea{height:58px;resize:vertical}
+.q{font-family:'JetBrains Mono',monospace;font-size:12px;background:#f3f6fa;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;white-space:pre-wrap;word-break:break-all}
+.q .inj{background:#ffd6d2;color:var(--crit);font-weight:600}
+.verdict{font-size:12.5px;font-weight:600;margin-top:6px}
+.verdict.bad{color:var(--crit)}.verdict.good{color:var(--green)}
+.code{margin-top:14px}
+.ctabs{display:flex;gap:6px;flex-wrap:wrap}
+.ctab{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 11px;cursor:pointer;color:var(--muted)}
+.ctab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cnote{color:var(--muted);font-size:13px;margin:10px 0 8px}
+pre.src{background:var(--term);color:#dbe7f5;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.55;border-radius:10px;padding:14px 16px;overflow:auto;max-height:560px;margin:0}
+pre.src .c{color:#7d93ad;font-style:italic}
+pre.src .s{color:#a5e0a0}
+pre.src .k{color:#ffb86b}
+.ethics{font-size:12.5px;color:#6b4b00;background:#fff8e0;border:1px solid #f1dc9a;border-radius:10px;padding:9px 12px;margin-bottom:14px}
+@media (max-width:960px){.grid,.lab .row{grid-template-columns:1fr}.steps{grid-template-columns:repeat(3,1fr)}.summary{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vulnerability Assessment Simulator</h1>
+  <p>Five assessment types, each run through the six-step process: asset identification → scanning → analysis → risk assessment → remediation → verification. Every target and result is simulated in the browser; the Python code panel shows how each check is implemented for real.</p>
+</header>
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div class="ethics"><b>Lab rule:</b> run real scans only on systems you own or have written permission to test. Practice on lab targets such as Metasploitable, DVWA or OWASP Juice Shop, never on live campus or third-party systems.</div>
+  <div class="intro"><h2 id="sTitle"></h2><p id="sDesc"></p></div>
+  <div class="steps" id="steps"></div>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3><span id="envTitle">Target environment</span><span class="dim" style="font-weight:500;font-size:12px;color:var(--muted)" id="envSub"></span></h3>
+        <div class="assets" id="assets"></div>
+        <div class="controls">
+          <button class="btn" id="runBtn">▶ Run assessment</button>
+          <button class="btn alt" id="fixAllBtn" disabled>Apply all fixes</button>
+          <button class="btn grn" id="verifyBtn" disabled>↻ Re-scan &amp; verify</button>
+          <label class="speed">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+        </div>
+        <div class="term" id="term"><span class="dim">Press "Run assessment" to start the simulated scan.</span></div>
+      </div>
+      <div class="card lab" id="webLab" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h3>Findings &amp; risk</h3>
+      <div class="summary">
+        <div class="sbox s-c"><div class="v" id="cC">0</div><div class="l">Critical</div></div>
+        <div class="sbox s-h"><div class="v" id="cH">0</div><div class="l">High</div></div>
+        <div class="sbox s-m"><div class="v" id="cM">0</div><div class="l">Medium</div></div>
+        <div class="sbox s-l"><div class="v" id="cL">0</div><div class="l">Low</div></div>
+      </div>
+      <div class="risk"><span>Risk score</span><div class="bar"><i id="riskBar"></i></div><b id="riskVal">0</b></div>
+      <table>
+        <thead><tr><th>Sev</th><th>Finding</th><th>Asset</th><th>CVSS</th><th>Status</th><th>Fix</th></tr></thead>
+        <tbody id="fbody"><tr><td colspan="6" class="empty">No findings yet. Run the assessment.</td></tr></tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">Click a finding for details and the fix. CVSS scores are illustrative. Risk score = sum of CVSS scores of open findings.</p>
+    </div>
+  </div>
+  <div class="card code">
+    <h3>Implementation code <button class="btn alt" id="copyBtn" style="padding:5px 11px;font-size:12.5px">Copy code</button></h3>
+    <div class="ctabs" id="ctabs"></div>
+    <p class="cnote" id="cnote"></p>
+    <pre class="src" id="src"></pre>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ */
+/*  SCENARIO DATA                                                      */
+/* ------------------------------------------------------------------ */
+const STEP_NAMES = [
+  ["Step 1","Asset Identification"],["Step 2","Vulnerability Scanning"],["Step 3","Vulnerability Analysis"],
+  ["Step 4","Risk Assessment"],["Step 5","Remediation"],["Step 6","Verification"]];
+
+const S = {
+network:{
+  tab:"Network-Based",
+  title:"1. Network-Based Assessment",
+  desc:"Identifies vulnerabilities in network devices, routers, switches, firewalls and open ports.",
+  envSub:"Lab subnet 10.0.0.0/24",
+  assets:[
+    {id:"rtr",ic:"RTR",name:"Edge Router",addr:"10.0.0.1"},
+    {id:"sw",ic:"SW",name:"Core Switch",addr:"10.0.0.2"},
+    {id:"fw",ic:"FW",name:"Perimeter Firewall",addr:"10.0.0.254"},
+    {id:"fs",ic:"SRV",name:"File Server",addr:"10.0.0.20"},
+    {id:"ws",ic:"SRV",name:"Web Server",addr:"10.0.0.30"}],
+  scan:[
+    "$ nmap -sS -sV -p- --open 10.0.0.0/24        (simulated)",
+    "10.0.0.1   22/tcp ssh  | 443/tcp https | firmware v12.1 (current v14.2)",
+    "10.0.0.2   22/tcp ssh  | 23/tcp telnet",
+    "10.0.0.20  139/tcp netbios-ssn | 445/tcp microsoft-ds  → SMBv1 negotiated",
+    "10.0.0.30  21/tcp ftp (vsftpd 3.0.3) | 80/tcp http | 443/tcp https",
+    "$ nmap -sU -p161 --script snmp-info 10.0.0.1",
+    "10.0.0.1   161/udp snmp → responds to community 'public'",
+    "Firewall ruleset exported from 10.0.0.254 → 42 rules parsed",
+    "Rule #7  GUEST_VLAN → ANY  service ANY  action ALLOW"],
+  findings:[
+    {id:"N-01",a:"fs",t:"SMBv1 enabled, MS17-010 patch missing",cv:9.8,
+     d:"SMBv1 is negotiated on port 445 and the host lacks the MS17-010 update, the flaw exploited by WannaCry for remote code execution.",
+     f:"Disable SMBv1, apply cumulative updates, and restrict 445/tcp to trusted subnets."},
+    {id:"N-02",a:"sw",t:"Telnet management enabled (cleartext)",cv:8.8,
+     d:"Telnet sends admin usernames and passwords unencrypted; anyone sniffing the management VLAN can capture them.",
+     f:"Disable Telnet on VTY lines and allow SSH v2 only with local or AAA authentication."},
+    {id:"N-03",a:"fw",t:"Permissive ANY→ANY rule from guest VLAN",cv:8.2,
+     d:"Rule #7 lets guest devices reach every internal subnet and service, so the network is effectively flat.",
+     f:"Replace with least-privilege rules: guests get internet (80/443/53) only; deny guest-to-internal traffic."},
+    {id:"N-04",a:"rtr",t:"Default SNMP community string 'public'",cv:7.5,
+     d:"SNMPv1/v2c with the default community lets anyone read the device configuration, routes and interface data.",
+     f:"Remove the default community and migrate to SNMPv3 (authPriv: SHA + AES)."},
+    {id:"N-05",a:"rtr",t:"Router firmware two major versions behind",cv:6.5,
+     d:"Firmware v12.1 is missing vendor security fixes released in v13 and v14.",
+     f:"Schedule a maintenance window and upgrade to the vendor-supported release."},
+    {id:"N-06",a:"ws",t:"Anonymous FTP login allowed",cv:5.3,
+     d:"vsftpd accepts 'anonymous' logins and exposes the /pub directory. FTP is also cleartext.",
+     f:"Set anonymous_enable=NO, or retire FTP in favour of SFTP."}]
+},
+web:{
+  tab:"Web Application",
+  title:"2. Web Application Assessment",
+  desc:"Identifies weaknesses such as SQL injection, cross-site scripting (XSS) and authentication issues.",
+  envSub:"http://campus-portal.lab (test app)",
+  assets:[
+    {id:"login",ic:"/lg",name:"Login form",addr:"/login"},
+    {id:"search",ic:"/sr",name:"Search page",addr:"/search?q="},
+    {id:"comm",ic:"/cm",name:"Comments",addr:"/comments"},
+    {id:"sess",ic:"CK",name:"Session cookies",addr:"Set-Cookie"},
+    {id:"hdr",ic:"HDR",name:"HTTP headers",addr:"response headers"}],
+  scan:[
+    "Crawling http://campus-portal.lab … 14 URLs, 5 forms, 9 parameters",
+    "/login  username=test'   → HTTP 500  'sqlite3.OperationalError: unrecognized token'",
+    "/search q=<b>va-canary-7731</b>  → canary reflected UNENCODED in response",
+    "/comments POST canary → stored; rendered unencoded on GET /comments",
+    "/login  10 wrong passwords in 4 s → no lockout, no HTTP 429",
+    "/register accepts password '123456'",
+    "Set-Cookie: sessionid=…; Path=/          (no HttpOnly, no Secure, no SameSite)",
+    "Headers: Content-Security-Policy MISSING, Strict-Transport-Security MISSING"],
+  findings:[
+    {id:"W-01",a:"login",t:"SQL injection in login (username)",cv:9.8,
+     d:"User input is concatenated into the SQL query. A crafted username changes the WHERE clause, so an attacker can bypass login or read the database. Try it in the SQL injection lab below.",
+     f:"Use parameterised queries or an ORM, validate input, and run the DB account with least privilege."},
+    {id:"W-02",a:"login",t:"Broken authentication: no lockout, weak passwords",cv:7.5,
+     d:"Unlimited login attempts allow brute force and credential stuffing, and weak passwords are accepted at registration.",
+     f:"Rate-limit or lock out after failed attempts, enforce a password policy, add MFA, and hash passwords with bcrypt or Argon2."},
+    {id:"W-03",a:"comm",t:"Stored XSS in comments",cv:7.2,
+     d:"Comment HTML is saved and rendered without encoding, so a script runs in every visitor's browser (session theft, defacement).",
+     f:"Encode output (template auto-escaping), sanitise any allowed HTML, and add a strict Content-Security-Policy."},
+    {id:"W-04",a:"search",t:"Reflected XSS in search parameter q",cv:6.1,
+     d:"The q parameter is echoed into the page unencoded, so a malicious link can run script in the victim's session.",
+     f:"HTML-encode reflected values and add a Content-Security-Policy."},
+    {id:"W-05",a:"sess",t:"Session cookie missing HttpOnly / Secure / SameSite",cv:5.4,
+     d:"JavaScript (and therefore XSS) can read the session cookie, and it can be sent over plain HTTP.",
+     f:"Set the HttpOnly, Secure and SameSite=Lax flags on the session cookie."},
+    {id:"W-06",a:"hdr",t:"Missing security headers (CSP, HSTS)",cv:3.7,
+     d:"Without CSP there is no second line of defence against XSS; without HSTS, SSL-stripping is possible.",
+     f:"Send Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options and frame-ancestors headers."}]
+},
+host:{
+  tab:"Host-Based",
+  title:"3. Host-Based Assessment",
+  desc:"Examines individual computers, servers and operating systems for security weaknesses.",
+  envSub:"Authenticated (credentialed) scan",
+  assets:[
+    {id:"win",ic:"WIN",name:"WIN-SRV-01",addr:"Windows Server 2016 · 10.0.1.10"},
+    {id:"ubu",ic:"LNX",name:"UBU-WEB-02",addr:"Ubuntu 22.04 · 10.0.1.20"},
+    {id:"pc",ic:"PC",name:"LAB-PC-14",addr:"Windows 10 22H2 · 10.0.1.54"}],
+  scan:[
+    "Logging in with supplied audit credentials (read-only)…",
+    "WIN-SRV-01  Get-HotFix / WSUS → 17 missing updates (4 rated Critical)",
+    "UBU-WEB-02  /etc/ssh/sshd_config → PermitRootLogin yes, PasswordAuthentication yes",
+    "UBU-WEB-02  /etc/cron.d/backup.sh  mode 0777  owner root  (runs as root)",
+    "UBU-WEB-02  ufw status → inactive",
+    "LAB-PC-14   OS build 19045 (Windows 10 22H2), past end of support",
+    "LAB-PC-14   Get-MpComputerStatus → RealTimeProtectionEnabled = False",
+    "LAB-PC-14   Get-LocalUser admin → PasswordNeverExpires = True"],
+  findings:[
+    {id:"H-01",a:"win",t:"17 missing security updates (4 critical)",cv:8.8,
+     d:"Unpatched OS components expose known, publicly documented vulnerabilities, including remote code execution.",
+     f:"Apply updates through WSUS or Windows Update and set a monthly patch cycle with tracking."},
+    {id:"H-02",a:"ubu",t:"SSH allows root login with password",cv:8.1,
+     d:"Direct root login plus password authentication makes brute-force attacks against the most powerful account possible.",
+     f:"Set PermitRootLogin no and PasswordAuthentication no, use key-based login, and add fail2ban."},
+    {id:"H-03",a:"ubu",t:"World-writable cron script run by root",cv:7.8,
+     d:"Any local user can edit /etc/cron.d/backup.sh, which runs as root. This is a classic privilege-escalation path.",
+     f:"Set chown root:root and chmod 700, then audit for other world-writable files."},
+    {id:"H-04",a:"pc",t:"Unsupported OS (Windows 10, end of support)",cv:7.4,
+     d:"Windows 10 reached end of support in October 2025, so new vulnerabilities no longer get free security fixes.",
+     f:"Upgrade to Windows 11 or enrol in Extended Security Updates, and isolate the PC until then."},
+    {id:"H-05",a:"pc",t:"Antivirus real-time protection disabled",cv:6.5,
+     d:"Microsoft Defender real-time protection is off, so malware is not blocked when it executes.",
+     f:"Enable real-time protection and enforce it with Group Policy or Intune."},
+    {id:"H-06",a:"ubu",t:"Host firewall inactive",cv:5.9,
+     d:"No host firewall, so every listening service is reachable from the network.",
+     f:"Enable ufw with default deny incoming and allow only required ports."},
+    {id:"H-07",a:"pc",t:"Local admin password never expires",cv:4.3,
+     d:"The same static local admin password, often reused across lab PCs, enables lateral movement.",
+     f:"Deploy Windows LAPS for unique, rotated local admin passwords."}]
+},
+wireless:{
+  tab:"Wireless",
+  title:"4. Wireless Network Assessment",
+  desc:"Identifies vulnerabilities in Wi-Fi networks, encryption, access points and wireless configurations.",
+  envSub:"Passive survey · 2.4 GHz + 5 GHz",
+  assets:[
+    {id:"staff",ic:"AP",name:"Campus-Staff",addr:"a4:2b:b0:11:22:01 · ch36"},
+    {id:"lab",ic:"AP",name:"Lab-AP",addr:"00:1d:7e:aa:bb:10 · ch6"},
+    {id:"guest",ic:"AP",name:"Campus-Guest",addr:"a4:2b:b0:11:22:09 · ch11"},
+    {id:"prn",ic:"AP",name:"Printer-Direct",addr:"3c:52:82:7f:00:21 · ch1"},
+    {id:"rogue",ic:"??",name:"Campus-Staff (?)",addr:"de:ad:be:ef:00:66 · ch6"}],
+  scan:[
+    "wlan0 → passive survey, channels 1–13 and 36–165",
+    "5 BSSIDs observed; comparing against authorised AP inventory…",
+    "SSID 'Campus-Staff' seen on UNKNOWN BSSID de:ad:be:ef:00:66 (signal −41 dBm, open auth)",
+    "Lab-AP          privacy bit set, no RSN IE → WEP",
+    "Lab-AP          http://192.168.1.1 admin login with vendor default credentials → accepted",
+    "Printer-Direct  WPS 2.0 configured, AP Setup Locked: No · cipher TKIP",
+    "Campus-Guest    no RSN IE → OPEN · client-to-client traffic observed",
+    "Campus-Staff    WPA2-Enterprise (802.1X, CCMP) ✓"],
+  findings:[
+    {id:"WL-01",a:"lab",t:"WEP encryption in use",cv:9.1,
+     d:"WEP is cryptographically broken. Its key can be recovered from captured traffic in minutes.",
+     f:"Reconfigure for WPA3-SAE, or WPA2-AES (CCMP) if clients cannot do WPA3."},
+    {id:"WL-02",a:"rogue",t:"Rogue access point (evil twin of Campus-Staff)",cv:8.8,
+     d:"An unauthorised AP broadcasts the staff SSID to lure clients and harvest credentials or intercept traffic.",
+     f:"Locate and remove it, enable WIPS rogue containment, and have clients validate the RADIUS server certificate."},
+    {id:"WL-03",a:"lab",t:"AP admin panel uses default credentials",cv:8.0,
+     d:"Anyone on the network can log in to the AP and change its configuration.",
+     f:"Set a strong unique admin password, use HTTPS-only management, and restrict management to the admin VLAN."},
+    {id:"WL-04",a:"prn",t:"WPS PIN enabled (no lockout)",cv:7.5,
+     d:"The 8-digit WPS PIN is validated in two halves, so it can be brute-forced quickly to reveal the passphrase.",
+     f:"Disable WPS (wps_state=0)."},
+    {id:"WL-05",a:"guest",t:"Open guest Wi-Fi without client isolation",cv:7.1,
+     d:"Traffic is unencrypted and guests can attack each other's devices directly.",
+     f:"Enable client isolation and OWE (Enhanced Open) or a captive portal, and firewall guests from the internal network."},
+    {id:"WL-06",a:"prn",t:"WPA2-PSK using TKIP cipher",cv:5.9,
+     d:"TKIP is deprecated and weaker than CCMP/AES.",
+     f:"Use the CCMP (AES) cipher only, with a long random passphrase."}]
+},
+cloud:{
+  tab:"Cloud Security",
+  title:"5. Cloud Security Assessment",
+  desc:"Identifies misconfigurations, weak access controls and security issues in cloud infrastructure.",
+  envSub:"AWS account 1111-2222-3333 · ap-south-1 (simulated)",
+  assets:[
+    {id:"s3",ic:"S3",name:"student-records",addr:"S3 bucket"},
+    {id:"sg",ic:"SG",name:"sg-0a1web",addr:"Security group (web-01)"},
+    {id:"iam",ic:"IAM",name:"IAM / root",addr:"root, dev-ops"},
+    {id:"rds",ic:"RDS",name:"exam-db",addr:"RDS PostgreSQL"},
+    {id:"ct",ic:"LOG",name:"CloudTrail",addr:"org-trail"}],
+  scan:[
+    "Assuming read-only role 'SecurityAudit'…",
+    "s3:ListBuckets → 3 buckets · student-records ACL grant AllUsers:READ, PublicAccessBlock: none",
+    "ec2:DescribeSecurityGroups → sg-0a1web ingress tcp/22 from 0.0.0.0/0",
+    "iam:GetAccountSummary → AccountAccessKeysPresent=1, AccountMFAEnabled=0",
+    "iam:ListUsers → dev-ops: AdministratorAccess, MFA devices: 0",
+    "rds:DescribeDBInstances → exam-db PubliclyAccessible=true StorageEncrypted=false",
+    "cloudtrail:GetTrailStatus org-trail → IsLogging=false"],
+  findings:[
+    {id:"C-01",a:"s3",t:"S3 bucket 'student-records' publicly readable",cv:9.1,
+     d:"The bucket ACL grants READ to AllUsers, so anyone on the internet can list and download student data.",
+     f:"Enable S3 Block Public Access at account and bucket level, remove the public grants, and serve through pre-signed URLs."},
+    {id:"C-02",a:"iam",t:"Root account has access keys and no MFA",cv:9.0,
+     d:"Leaked root keys give unrestricted, unauditable control of the whole account.",
+     f:"Delete the root access keys, enable hardware MFA on root, and use IAM roles for daily work."},
+    {id:"C-03",a:"sg",t:"SSH (22) open to 0.0.0.0/0",cv:8.6,
+     d:"The instance's SSH port is exposed to internet-wide brute force and scanning.",
+     f:"Restrict to the VPN/campus CIDR or use SSM Session Manager with no inbound port."},
+    {id:"C-04",a:"iam",t:"Admin IAM user 'dev-ops' without MFA",cv:8.1,
+     d:"A phished or leaked password gives full administrator access.",
+     f:"Enforce MFA by policy and replace AdministratorAccess with least-privilege roles."},
+    {id:"C-05",a:"rds",t:"RDS publicly accessible, storage unencrypted",cv:7.5,
+     d:"The exam database is reachable from the internet and its data at rest is not encrypted.",
+     f:"Set PubliclyAccessible=false in private subnets, then encrypt via snapshot → encrypted copy → restore."},
+    {id:"C-06",a:"ct",t:"CloudTrail logging disabled",cv:5.5,
+     d:"API activity is not recorded, so incidents cannot be investigated.",
+     f:"Start logging with a multi-region trail, log file validation, and an S3 bucket protected by Object Lock."}]
+}};
+
+/* ------------------------------------------------------------------ */
+/*  IMPLEMENTATION CODE (shown in the code panel)                      */
+/* ------------------------------------------------------------------ */
+const CODE = {
+network:{
+scanner:{note:"TCP connect scanner with banner grabbing and a risk map for dangerous services. Python standard library only.",code:String.raw`#!/usr/bin/env python3
+"""
+network_scan.py - Network-based vulnerability assessment (teaching version)
+TCP connect scan + banner grab + risky-service mapping + firewall rule audit.
+Run ONLY against networks you own or are authorised in writing to test.
+"""
+import socket
+import ipaddress
+from concurrent.futures import ThreadPoolExecutor
+
+COMMON_PORTS = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3306, 3389, 8080]
+
+# port -> (service, severity, note)
+RISKY = {
+    21:   ("FTP",    "MEDIUM",   "Cleartext; check anonymous login"),
+    23:   ("Telnet", "CRITICAL", "Cleartext admin access; replace with SSH"),
+    139:  ("NetBIOS","MEDIUM",   "Legacy file sharing exposure"),
+    445:  ("SMB",    "HIGH",     "Check SMBv1 / MS17-010 patch level"),
+    3306: ("MySQL",  "HIGH",     "Database should not be network-exposed"),
+    3389: ("RDP",    "HIGH",     "Expose only via VPN; enforce NLA"),
+}
+
+def scan_port(host, port, timeout=0.8):
+    """Return (port, banner) if the TCP port is open, else None."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(timeout)
+        if s.connect_ex((host, port)) != 0:
+            return None
+        banner = ""
+        try:
+            banner = s.recv(128).decode(errors="ignore").strip()
+        except (socket.timeout, ConnectionResetError):
+            pass
+        return port, banner
+
+def scan_host(host):
+    with ThreadPoolExecutor(max_workers=50) as pool:
+        results = pool.map(lambda p: scan_port(host, p), COMMON_PORTS)
+    return [r for r in results if r]
+
+def check_ftp_anonymous(host):
+    from ftplib import FTP
+    try:
+        with FTP(host, timeout=3) as ftp:
+            ftp.login()                     # anonymous login
+            return True
+    except Exception:
+        return False
+
+def audit_firewall(rules):
+    """rules: list of dicts exported from the firewall (src, dst, service, action)."""
+    issues = []
+    for i, r in enumerate(rules, 1):
+        if r["action"] == "ALLOW" and r["dst"] == "ANY" and r["service"] == "ANY":
+            issues.append(("HIGH", f"Rule #{i}: {r['src']} -> ANY/ANY is over-permissive"))
+    return issues
+
+def assess(cidr):
+    findings = []
+    for ip in ipaddress.ip_network(cidr).hosts():                 # Step 1: assets
+        for port, banner in scan_host(str(ip)):                     # Step 2: scan
+            service, sev, note = RISKY.get(port, ("open", "INFO", ""))
+            if port == 21 and check_ftp_anonymous(str(ip)):
+                sev, note = "MEDIUM", "Anonymous FTP login allowed"
+            findings.append(dict(host=str(ip), port=port, service=service,
+                                 banner=banner, severity=sev, note=note))
+    order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    return sorted(findings, key=lambda f: order[f["severity"]])    # Step 3/4: prioritise
+
+if __name__ == "__main__":
+    for f in assess("10.0.0.0/28"):
+        print(f"{f['severity']:9} {f['host']:15} {f['port']:>5}/tcp "
+              f"{f['service']:8} {f['banner'][:35]:35} {f['note']}")
+`},
+fix:{note:"Remediation for the simulated findings: Cisco IOS hardening, SMBv1 removal on Windows, and a least-privilege firewall policy.",code:String.raw`! ---------- N-02  Disable Telnet, allow SSH v2 only (Cisco IOS) ----------
+ip domain-name lab.local
+crypto key generate rsa modulus 2048
+ip ssh version 2
+username netadmin privilege 15 secret <StrongPassword>
+line vty 0 4
+ transport input ssh
+ login local
+!
+! ---------- N-04  Replace SNMP 'public' with SNMPv3 authPriv ----------
+no snmp-server community public
+snmp-server group NETADMIN v3 priv
+snmp-server user monitor NETADMIN v3 auth sha <AuthPass> priv aes 128 <PrivPass>
+
+# ---------- N-01  Windows file server: remove SMBv1 (PowerShell, admin) ----------
+Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
+Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart
+Get-SmbServerConfiguration | Select EnableSMB1Protocol     # verify: False
+
+# ---------- N-03  Least-privilege rules for guest VLAN (iptables example) ----------
+iptables -A FORWARD -i vlan30 -o vlan10 -j DROP                       # guest -> internal: deny
+iptables -A FORWARD -i vlan30 -o wan -p udp --dport 53  -j ACCEPT     # DNS
+iptables -A FORWARD -i vlan30 -o wan -p tcp -m multiport --dports 80,443 -j ACCEPT
+iptables -A FORWARD -i vlan30 -j DROP                                 # everything else
+
+# ---------- N-06  vsftpd: disable anonymous access ----------
+sed -i 's/^anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf
+systemctl restart vsftpd
+`},
+setup:{note:"How to run the scanner and which professional tools do the same job.",code:String.raw`# Requirements: Python 3.9+, standard library only
+python3 network_scan.py
+
+# Equivalent professional commands
+nmap -sS -sV -p- --open 10.0.0.0/24          # TCP SYN scan + service versions
+nmap -sU -p 161 --script snmp-info 10.0.0.1  # SNMP (UDP) check
+nmap -p445 --script smb-protocols,smb-vuln-ms17-010 10.0.0.20
+
+# Full vulnerability scanners: OpenVAS / Greenbone (free), Nessus, Qualys
+
+# Safe practice targets (run inside an isolated host-only VM network):
+#   Metasploitable 2/3, a GNS3 or Packet Tracer router/switch topology
+`}},
+web:{
+scanner:{note:"Non-destructive web checks: security headers, cookie flags, XSS reflection using a harmless canary, SQL error detection and login rate limiting.",code:String.raw`#!/usr/bin/env python3
+"""
+web_scan.py - Web application assessment (teaching version, non-destructive)
+pip install requests
+Test ONLY your own app or a practice app (DVWA, OWASP Juice Shop).
+"""
+import requests
+
+TARGET  = "http://localhost:8000"
+CANARY  = "<b>va-canary-7731</b>"          # harmless marker, not an exploit
+SQL_ERRORS = ["SQL syntax", "sqlite3.OperationalError", "ORA-0",
+              "unterminated quoted string", "pg_query()"]
+REQUIRED_HEADERS = ["Content-Security-Policy", "Strict-Transport-Security",
+                    "X-Content-Type-Options"]
+findings = []
+
+def add(sev, where, msg):
+    findings.append((sev, where, msg))
+
+def check_headers():
+    r = requests.get(TARGET, timeout=5)
+    for h in REQUIRED_HEADERS:
+        if h not in r.headers:
+            add("LOW", "/", f"Missing header: {h}")
+
+def check_cookies(login_path="/login"):
+    r = requests.post(TARGET + login_path,
+                      data={"username": "audit", "password": "audit"}, timeout=5)
+    raw = r.headers.get("Set-Cookie", "")
+    for flag in ("HttpOnly", "Secure", "SameSite"):
+        if raw and flag.lower() not in raw.lower():
+            add("MEDIUM", "cookie", f"Session cookie missing {flag}")
+
+def check_reflected_xss(path, param):
+    r = requests.get(TARGET + path, params={param: CANARY}, timeout=5)
+    if CANARY in r.text:                    # came back un-encoded
+        add("MEDIUM", path, f"Parameter '{param}' reflected unencoded (XSS)")
+
+def check_stored_xss(post_path, field, view_path):
+    requests.post(TARGET + post_path, data={field: CANARY}, timeout=5)
+    if CANARY in requests.get(TARGET + view_path, timeout=5).text:
+        add("HIGH", view_path, f"Field '{field}' stored and rendered unencoded")
+
+def check_sql_error(path, field):
+    r = requests.post(TARGET + path, data={field: "audit'", "password": "x"}, timeout=5)
+    hit = next((e for e in SQL_ERRORS if e in r.text), None)
+    if hit or r.status_code == 500:
+        add("CRITICAL", path, f"'{field}' breaks SQL syntax -> likely SQL injection")
+
+def check_rate_limit(path, attempts=10):
+    codes = [requests.post(TARGET + path,
+                           data={"username": "audit", "password": f"wrong{i}"},
+                           timeout=5).status_code for i in range(attempts)]
+    if not any(c in (423, 429) for c in codes):
+        add("HIGH", path, f"No lockout/rate limit after {attempts} failed logins")
+
+if __name__ == "__main__":
+    check_headers()
+    check_cookies()
+    check_reflected_xss("/search", "q")
+    check_stored_xss("/comments", "body", "/comments")
+    check_sql_error("/login", "username")
+    check_rate_limit("/login")
+    for sev, where, msg in sorted(findings):
+        print(f"{sev:9} {where:12} {msg}")
+`},
+fix:{note:"Vulnerable code next to the secure version: parameterised SQL, output encoding, cookie flags, CSP, password hashing and rate limiting (Flask).",code:String.raw`# ================= W-01  SQL INJECTION =================
+# VULNERABLE: user input concatenated into SQL
+query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
+cur.execute(query)
+
+# SECURE: parameterised query - input is always treated as data
+cur.execute("SELECT id, pw_hash FROM users WHERE username = ?", (username,))
+row = cur.fetchone()
+
+# ================= W-02  AUTHENTICATION =================
+# pip install flask flask-limiter bcrypt
+import bcrypt
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+limiter = Limiter(get_remote_address, app=app)
+
+@app.post("/login")
+@limiter.limit("5 per minute")                        # brute-force protection
+def login():
+    row = db.execute("SELECT id, pw_hash FROM users WHERE username = ?",
+                     (request.form["username"],)).fetchone()
+    if row and bcrypt.checkpw(request.form["password"].encode(), row["pw_hash"]):
+        session.clear(); session["uid"] = row["id"]   # new session on login
+        return redirect("/")
+    return "Invalid credentials", 401
+
+def hash_password(pw):                                 # at registration
+    if len(pw) < 12: raise ValueError("Password too short")
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12))
+
+# ================= W-03 / W-04  XSS =================
+# VULNERABLE: raw HTML into the page
+return "<p>Results for " + request.args["q"] + "</p>"
+
+# SECURE: escape on output (Jinja2 templates auto-escape {{ q }})
+from markupsafe import escape
+return f"<p>Results for {escape(request.args['q'])}</p>"
+
+# If some HTML must be allowed in comments, sanitise with an allow-list:
+import bleach
+safe = bleach.clean(comment, tags=["b", "i", "a"], attributes={"a": ["href"]})
+
+# ================= W-05 / W-06  COOKIES + HEADERS =================
+app.config.update(SESSION_COOKIE_HTTPONLY=True,
+                  SESSION_COOKIE_SECURE=True,
+                  SESSION_COOKIE_SAMESITE="Lax")
+
+@app.after_request
+def security_headers(resp):
+    resp.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; frame-ancestors 'none'"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+`},
+setup:{note:"Lab setup and professional tools.",code:String.raw`# Practice targets (run locally with Docker)
+docker run -d -p 3000:3000 bkimminich/juice-shop      # OWASP Juice Shop
+docker run -d -p 8080:80  vulnerables/web-dvwa        # DVWA
+
+# Run the scanner (edit TARGET first)
+pip install requests
+python3 web_scan.py
+
+# Professional tools
+#   OWASP ZAP   - free DAST scanner (spider + active scan + reports)
+#   Burp Suite  - intercepting proxy, manual testing
+#   sqlmap      - SQL injection verification (authorised targets only)
+#   Nikto       - web server misconfiguration scan
+
+# Reference: OWASP Top 10 (A03 Injection, A07 Identification & Authentication Failures)
+`}},
+host:{
+scanner:{note:"Credentialed host checks on Linux (CIS-style): SSH configuration, pending updates, firewall, world-writable files, password ageing and listening services.",code:String.raw`#!/usr/bin/env python3
+"""
+host_audit.py - Host-based assessment for Linux (teaching version)
+Run with sudo on the host being assessed:  sudo python3 host_audit.py
+"""
+import os, re, stat, subprocess, platform
+
+findings = []
+def add(sev, msg): findings.append((sev, msg))
+
+def run(cmd):
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
+
+def check_os():
+    info = platform.freedesktop_os_release()          # Python 3.10+
+    add("INFO", f"OS: {info.get('PRETTY_NAME')} kernel {platform.release()}")
+
+def check_updates():
+    run("apt-get update -qq")
+    pending = [l for l in run("apt list --upgradable 2>/dev/null").splitlines() if "/" in l]
+    security = [l for l in pending if "-security" in l]
+    if security:
+        add("HIGH", f"{len(security)} security updates pending ({len(pending)} total)")
+
+def check_ssh():
+    cfg = open("/etc/ssh/sshd_config").read()
+    if re.search(r"^\s*PermitRootLogin\s+yes", cfg, re.M):
+        add("HIGH", "SSH: root login permitted")
+    if re.search(r"^\s*PasswordAuthentication\s+yes", cfg, re.M):
+        add("MEDIUM", "SSH: password authentication enabled")
+
+def check_firewall():
+    if "Status: active" not in run("ufw status"):
+        add("MEDIUM", "Host firewall (ufw) inactive")
+
+def check_world_writable(paths=("/etc", "/usr/local/bin", "/opt")):
+    for base in paths:
+        for root, _, files in os.walk(base):
+            for name in files:
+                p = os.path.join(root, name)
+                try:
+                    if os.lstat(p).st_mode & stat.S_IWOTH:
+                        sev = "HIGH" if p.startswith("/etc/cron") else "MEDIUM"
+                        add(sev, f"World-writable file: {p}")
+                except OSError:
+                    pass
+
+def check_password_policy():
+    m = re.search(r"^PASS_MAX_DAYS\s+(\d+)", open("/etc/login.defs").read(), re.M)
+    if not m or int(m.group(1)) > 365:
+        add("LOW", "Password maximum age not enforced")
+
+def check_uid0_accounts():
+    for line in open("/etc/passwd"):
+        user, _, uid = line.split(":")[:3]
+        if uid == "0" and user != "root":
+            add("CRITICAL", f"Extra UID 0 account: {user}")
+
+def check_listening():
+    for line in run("ss -tulnH").splitlines():
+        local = line.split()[4]
+        if local.startswith(("0.0.0.0", "[::]", "*")):
+            add("INFO", f"Listening on all interfaces: {local}")
+
+if __name__ == "__main__":
+    for check in (check_os, check_updates, check_ssh, check_firewall,
+                  check_world_writable, check_password_policy,
+                  check_uid0_accounts, check_listening):
+        check()
+    order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+    for sev, msg in sorted(findings, key=lambda f: order[f[0]]):
+        print(f"{sev:9} {msg}")
+`},
+fix:{note:"Hardening commands for the Linux and Windows findings.",code:String.raw`# ---------- Linux (UBU-WEB-02) ----------
+# H-02  SSH hardening
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo systemctl restart ssh
+sudo apt install -y fail2ban
+
+# H-03  Fix world-writable root cron script
+sudo chown root:root /etc/cron.d/backup.sh
+sudo chmod 700 /etc/cron.d/backup.sh
+sudo find / -xdev -type f -perm -0002 2>/dev/null      # find any others
+
+# H-06  Host firewall
+sudo ufw default deny incoming
+sudo ufw allow 22/tcp && sudo ufw allow 443/tcp
+sudo ufw enable
+
+# Automatic security updates
+sudo apt install -y unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades
+
+# ---------- Windows (PowerShell as Administrator) ----------
+# H-01  Missing updates
+Get-HotFix | Sort-Object InstalledOn -Descending | Select -First 5
+Install-Module PSWindowsUpdate -Force
+Install-WindowsUpdate -AcceptAll -AutoReboot
+
+# H-05  Defender real-time protection
+Set-MpPreference -DisableRealtimeMonitoring $false
+Get-MpComputerStatus | Select RealTimeProtectionEnabled, AntivirusSignatureLastUpdated
+
+# H-07  Local admin password policy (use Windows LAPS for rotation)
+Set-LocalUser -Name "admin" -PasswordNeverExpires $false
+Get-LocalUser | Where-Object { $_.PasswordNeverExpires } | Select Name
+
+# Host firewall on all profiles
+Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+`},
+setup:{note:"How to run and which professional tools to compare against.",code:String.raw`# Linux audit
+sudo python3 host_audit.py
+
+# Windows quick audit (PowerShell)
+Get-ComputerInfo | Select OsName, OsVersion, OsBuildNumber
+Get-HotFix
+Get-MpComputerStatus
+Get-NetFirewallProfile | Select Name, Enabled
+Get-LocalUser | Select Name, Enabled, PasswordNeverExpires, LastLogon
+
+# Professional tools
+#   Lynis          - Linux/Unix hardening audit:  sudo lynis audit system
+#   OpenSCAP       - CIS / STIG compliance profiles
+#   CIS-CAT Lite   - CIS Benchmarks (Windows and Linux)
+#   Nessus / OpenVAS credentialed scans
+#   Microsoft Security Compliance Toolkit (Windows baselines)
+`}},
+wireless:{
+scanner:{note:"Passive Wi-Fi audit on Linux: lists networks with nmcli, classifies the encryption, detects rogue/evil-twin APs against your inventory, and flags WPS. Nothing is transmitted to client devices.",code:String.raw`#!/usr/bin/env python3
+"""
+wifi_audit.py - Wireless network assessment (passive, teaching version)
+Linux with NetworkManager; WPS check needs 'iw' and sudo.
+"""
+import re, subprocess
+
+# Authorised AP inventory: SSID -> approved BSSIDs (from your network team)
+AUTHORISED = {
+    "Campus-Staff": {"a4:2b:b0:11:22:01", "a4:2b:b0:11:22:02"},
+    "Campus-Guest": {"a4:2b:b0:11:22:09"},
+    "Lab-AP":       {"00:1d:7e:aa:bb:10"},
+}
+
+def scan_networks():
+    out = subprocess.run(
+        ["nmcli", "-t", "-f", "SSID,BSSID,CHAN,SIGNAL,SECURITY",
+         "dev", "wifi", "list", "--rescan", "yes"],
+        capture_output=True, text=True).stdout
+    nets = []
+    for line in out.splitlines():
+        # nmcli escapes ':' inside BSSIDs as '\:'
+        parts = [p.replace("\x00", ":") for p in line.replace("\\:", "\x00").split(":")]
+        ssid, bssid, chan, signal, sec = parts
+        nets.append(dict(ssid=ssid or "<hidden>", bssid=bssid.lower(),
+                         chan=chan, signal=int(signal), security=sec))
+    return nets
+
+def classify_encryption(sec):
+    if sec in ("", "--"):                return "HIGH",     "Open network: no encryption"
+    if "WEP" in sec:                     return "CRITICAL", "WEP is broken: key recoverable"
+    if "WPA1" in sec and "WPA2" not in sec and "WPA3" not in sec:
+                                         return "HIGH",     "WPA1/TKIP is deprecated"
+    if "WPA3" in sec:                    return "OK",       "WPA3"
+    if "802.1X" in sec:                  return "OK",       "WPA2-Enterprise"
+    return "LOW", "WPA2-Personal: ensure AES/CCMP and a strong passphrase"
+
+def detect_rogue(net):
+    approved = AUTHORISED.get(net["ssid"])
+    if approved is not None and net["bssid"] not in approved:
+        return "CRITICAL", f"Rogue/evil-twin AP: '{net['ssid']}' on unknown {net['bssid']}"
+    return None
+
+def wps_enabled_bssids(iface="wlan0"):
+    """Parse 'iw scan' output for BSSIDs advertising WPS."""
+    out = subprocess.run(["sudo", "iw", "dev", iface, "scan"],
+                         capture_output=True, text=True).stdout
+    found, current = set(), None
+    for line in out.splitlines():
+        m = re.match(r"BSS ([0-9a-f:]{17})", line.strip())
+        if m:
+            current = m.group(1)
+        elif "WPS:" in line and current:
+            found.add(current)
+    return found
+
+if __name__ == "__main__":
+    wps = wps_enabled_bssids()
+    for n in scan_networks():
+        sev, note = classify_encryption(n["security"])
+        print(f"{sev:9} {n['ssid']:18} {n['bssid']} ch{n['chan']:>3} {n['signal']:>3}%  {note}")
+        rogue = detect_rogue(n)
+        if rogue:
+            print(f"{rogue[0]:9} {rogue[1]}")
+        if n["bssid"] in wps:
+            print(f"{'HIGH':9} {n['ssid']}: WPS enabled (PIN brute-force risk)")
+`},
+fix:{note:"Secure access point configuration (hostapd syntax; the same settings exist in every vendor's AP or controller UI).",code:String.raw`# ---------- WL-01 / WL-06  Lab-AP: WPA3 with WPA2-AES transition mode ----------
+# /etc/hostapd/hostapd.conf
+interface=wlan0
+ssid=Lab-AP
+hw_mode=g
+channel=6
+wpa=2
+wpa_key_mgmt=SAE WPA-PSK          # WPA3-SAE + WPA2-PSK for older clients
+rsn_pairwise=CCMP                  # AES only - no TKIP
+ieee80211w=1                       # Protected Management Frames (required for WPA3)
+sae_password=<long-random-passphrase-20+chars>
+wpa_passphrase=<long-random-passphrase-20+chars>
+
+# ---------- WL-04  Disable WPS ----------
+wps_state=0
+
+# ---------- WL-05  Guest network: client isolation ----------
+ap_isolate=1
+
+# ---------- Staff network: WPA2/WPA3-Enterprise (802.1X) ----------
+wpa_key_mgmt=WPA-EAP
+ieee8021x=1
+auth_server_addr=10.0.0.5
+auth_server_port=1812
+auth_server_shared_secret=<radius-secret>
+
+# ---------- WL-03  AP management ----------
+#  * change default admin credentials, HTTPS-only GUI
+#  * management reachable from the admin VLAN only
+#  * update AP firmware
+
+# ---------- WL-02  Rogue AP response ----------
+#  * locate it via signal strength (walk test), then remove it
+#  * enable WIPS / rogue containment on the wireless controller
+#  * clients: validate the RADIUS server certificate (stops evil-twin credential theft)
+`},
+setup:{note:"How to run and which professional tools to use.",code:String.raw`# Run the passive audit (Linux)
+sudo python3 wifi_audit.py
+
+# Manual equivalents
+nmcli -f SSID,BSSID,CHAN,SIGNAL,SECURITY dev wifi list
+sudo iw dev wlan0 scan | grep -E "BSS |SSID|WPS|RSN|WPA"
+
+# Professional tools
+#   Kismet         - passive wireless discovery, rogue AP detection
+#   Wireshark      - inspect beacons and the 802.11 handshake
+#   Aircrack-ng    - auditing suite (airodump-ng survey) - authorised use only
+#   Controller WIPS (Cisco, Aruba, Ubiquiti) - continuous rogue monitoring
+
+# Lab practice: an old router configured with WEP or WPS in an isolated room,
+# never on the production campus network.
+`}},
+cloud:{
+scanner:{note:"Cloud security posture checks (CSPM-style) using boto3 with read-only credentials: S3 exposure, security groups, IAM/root hygiene, RDS and CloudTrail.",code:String.raw`#!/usr/bin/env python3
+"""
+cloud_audit.py - AWS cloud security assessment (teaching version)
+pip install boto3 ; run with a READ-ONLY role (AWS managed policy: SecurityAudit)
+"""
+import boto3
+from botocore.exceptions import ClientError
+
+s3, ec2, iam = boto3.client("s3"), boto3.client("ec2"), boto3.client("iam")
+rds, ct = boto3.client("rds"), boto3.client("cloudtrail")
+findings = []
+def add(sev, res, msg): findings.append((sev, res, msg))
+
+ADMIN_PORTS = {22: "SSH", 3389: "RDP", 3306: "MySQL", 5432: "PostgreSQL"}
+
+def check_s3():
+    for b in s3.list_buckets()["Buckets"]:
+        name = b["Name"]
+        try:
+            cfg = s3.get_public_access_block(Bucket=name)["PublicAccessBlockConfiguration"]
+            if not all(cfg.values()):
+                add("HIGH", name, "Block Public Access partially disabled")
+        except ClientError:
+            add("HIGH", name, "No Block Public Access configuration")
+        for g in s3.get_bucket_acl(Bucket=name)["Grants"]:
+            uri = g["Grantee"].get("URI", "")
+            if uri.endswith("AllUsers") or uri.endswith("AuthenticatedUsers"):
+                add("CRITICAL", name, f"ACL grants {g['Permission']} to {uri.split('/')[-1]}")
+
+def check_security_groups():
+    for sg in ec2.describe_security_groups()["SecurityGroups"]:
+        for p in sg["IpPermissions"]:
+            world = any(r.get("CidrIp") == "0.0.0.0/0" for r in p.get("IpRanges", []))
+            lo, hi = p.get("FromPort", 0), p.get("ToPort", 65535)
+            for port, svc in ADMIN_PORTS.items():
+                if world and lo <= port <= hi:
+                    add("HIGH", sg["GroupId"], f"{svc} ({port}) open to 0.0.0.0/0")
+
+def check_iam():
+    s = iam.get_account_summary()["SummaryMap"]
+    if s.get("AccountAccessKeysPresent"):
+        add("CRITICAL", "root", "Root account has access keys")
+    if not s.get("AccountMFAEnabled"):
+        add("CRITICAL", "root", "Root account MFA not enabled")
+    for u in iam.list_users()["Users"]:
+        name = u["UserName"]
+        if iam.list_mfa_devices(UserName=name)["MFADevices"]:
+            continue
+        pols = [p["PolicyName"] for p in
+                iam.list_attached_user_policies(UserName=name)["AttachedPolicies"]]
+        sev = "HIGH" if "AdministratorAccess" in pols else "MEDIUM"
+        add(sev, name, "IAM user without MFA" + (" (AdministratorAccess)" if sev == "HIGH" else ""))
+
+def check_rds():
+    for db in rds.describe_db_instances()["DBInstances"]:
+        dbid = db["DBInstanceIdentifier"]
+        if db["PubliclyAccessible"]:
+            add("HIGH", dbid, "RDS instance publicly accessible")
+        if not db["StorageEncrypted"]:
+            add("HIGH", dbid, "RDS storage not encrypted at rest")
+
+def check_cloudtrail():
+    trails = ct.describe_trails()["trailList"]
+    if not any(ct.get_trail_status(Name=t["TrailARN"])["IsLogging"] for t in trails):
+        add("MEDIUM", "account", "No CloudTrail trail is logging")
+
+if __name__ == "__main__":
+    for check in (check_s3, check_security_groups, check_iam, check_rds, check_cloudtrail):
+        try:
+            check()
+        except ClientError as e:
+            print(f"[skip] {check.__name__}: {e.response['Error']['Code']}")
+    order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+    for sev, res, msg in sorted(findings, key=lambda f: order[f[0]]):
+        print(f"{sev:9} {res:22} {msg}")
+`},
+fix:{note:"Remediation with boto3, plus the console-only steps for root and IAM.",code:String.raw`import boto3
+s3, ec2 = boto3.client("s3"), boto3.client("ec2")
+
+# C-01  Block all public access on the bucket
+s3.put_public_access_block(
+    Bucket="student-records",
+    PublicAccessBlockConfiguration={
+        "BlockPublicAcls": True, "IgnorePublicAcls": True,
+        "BlockPublicPolicy": True, "RestrictPublicBuckets": True})
+s3.put_bucket_acl(Bucket="student-records", ACL="private")
+
+# C-03  Remove world-open SSH; allow only the campus VPN range
+ssh = {"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22}
+ec2.revoke_security_group_ingress(GroupId="sg-0a1web",
+    IpPermissions=[{**ssh, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}])
+ec2.authorize_security_group_ingress(GroupId="sg-0a1web",
+    IpPermissions=[{**ssh, "IpRanges": [{"CidrIp": "10.20.0.0/16",
+                                         "Description": "Campus VPN"}]}])
+
+# C-05  RDS: make private now; encrypt via snapshot -> encrypted copy -> restore
+rds = boto3.client("rds")
+rds.modify_db_instance(DBInstanceIdentifier="exam-db",
+                       PubliclyAccessible=False, ApplyImmediately=True)
+rds.create_db_snapshot(DBInstanceIdentifier="exam-db", DBSnapshotIdentifier="exam-db-pre-enc")
+# then: copy_db_snapshot(..., KmsKeyId="alias/aws/rds") and restore_db_instance_from_db_snapshot
+
+# C-06  Re-enable CloudTrail
+boto3.client("cloudtrail").start_logging(Name="org-trail")
+
+# C-02 / C-04  Console (root sign-in required for root items)
+#   root    : delete access keys -> enable hardware/virtual MFA -> stop using root
+#   dev-ops : enforce MFA (deny-without-MFA policy), replace AdministratorAccess
+#             with a least-privilege role assumed via IAM Identity Center
+`},
+setup:{note:"How to run safely and which tools to compare against.",code:String.raw`# Use a READ-ONLY audit identity
+aws iam attach-role-policy --role-name AuditRole \
+    --policy-arn arn:aws:iam::aws:policy/SecurityAudit
+pip install boto3
+AWS_PROFILE=audit python3 cloud_audit.py
+
+# Practise without a real account: LocalStack emulates AWS APIs locally
+pip install localstack && localstack start
+AWS_ENDPOINT_URL=http://localhost:4566 python3 cloud_audit.py
+
+# Professional tools
+#   Prowler       - open-source AWS/Azure/GCP checks (CIS, ISO 27001):  prowler aws
+#   ScoutSuite    - multi-cloud security auditing report
+#   AWS Security Hub + AWS Config - continuous, managed posture checks
+#   Microsoft Defender for Cloud / Google Security Command Center
+`}}};
+
+/* ------------------------------------------------------------------ */
+/*  ENGINE                                                             */
+/* ------------------------------------------------------------------ */
+const $ = id => document.getElementById(id);
+const sevOf = cv => cv >= 9 ? "Critical" : cv >= 7 ? "High" : cv >= 4 ? "Medium" : "Low";
+let cur = "network", codeTab = "scanner", timer = null, state = {};
+
+function freshState(){ return {ran:false, running:false, shown:[], fixed:new Set(), resolved:new Set(), steps:[0,0,0,0,0,0]}; }
+Object.keys(S).forEach(k => state[k] = freshState());
+
+function renderTabs(){
+  $("tabs").innerHTML = "";
+  Object.keys(S).forEach((k,i) => {
+    const b = document.createElement("button");
+    b.className = "tab" + (k===cur ? " on" : "");
+    b.innerHTML = `<span class="n">${i+1}</span>`;
+    b.appendChild(document.createTextNode(S[k].tab));
+    b.onclick = () => { if (state[cur].running) return; cur = k; codeTab = "scanner"; renderAll(); };
+    $("tabs").appendChild(b);
+  });
+}
+function renderSteps(){
+  const st = state[cur].steps;
+  $("steps").innerHTML = STEP_NAMES.map((s,i) =>
+    `<div class="step ${st[i]===2?"done":st[i]===1?"active":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
+}
+function setStep(i, v){ state[cur].steps[i] = v; renderSteps(); }
+
+function renderAssets(){
+  const sc = S[cur], s = state[cur];
+  $("assets").innerHTML = "";
+  sc.assets.forEach(a => {
+    const open = s.shown.filter(f => f.a===a.id && !s.resolved.has(f.id)).length;
+    const any = s.shown.some(f => f.a===a.id);
+    const d = document.createElement("div");
+    d.className = "asset" + (open ? " found" : (s.ran && !s.running && (any || s.steps[2]===2) ? " clean" : ""));
+    d.innerHTML = `<div class="ic"></div><div><div class="nm"></div><div class="ad"></div></div><span class="bd"></span>`;
+    d.querySelector(".ic").textContent = a.ic;
+    d.querySelector(".nm").textContent = a.name;
+    d.querySelector(".ad").textContent = a.addr;
+    d.querySelector(".bd").textContent = open;
+    $("assets").appendChild(d);
+  });
+}
+
+function renderFindings(){
+  const s = state[cur];
+  const counts = {Critical:0,High:0,Medium:0,Low:0};
+  let risk = 0, max = S[cur].findings.reduce((t,f)=>t+f.cv,0);
+  s.shown.forEach(f => { if (!s.resolved.has(f.id)) { counts[sevOf(f.cv)]++; risk += f.cv; } });
+  $("cC").textContent = counts.Critical; $("cH").textContent = counts.High;
+  $("cM").textContent = counts.Medium;   $("cL").textContent = counts.Low;
+  $("riskVal").textContent = risk.toFixed(1);
+  $("riskBar").style.width = (max ? risk/max*100 : 0) + "%";
+  const tb = $("fbody"); tb.innerHTML = "";
+  if (!s.shown.length){ tb.innerHTML = `<tr><td colspan="6" class="empty">No findings yet. Run the assessment.</td></tr>`; return; }
+  const assetName = id => (S[cur].assets.find(a=>a.id===id)||{}).name;
+  [...s.shown].sort((a,b)=>b.cv-a.cv).forEach(f => {
+    const sev = sevOf(f.cv);
+    const status = s.resolved.has(f.id) ? ["res","Resolved ✓"] : s.fixed.has(f.id) ? ["fix","Fix applied"] : ["open","Open"];
+    const tr = document.createElement("tr"); tr.className = "f";
+    tr.innerHTML = `<td><span class="pill p-${sev}">${sev}</span></td><td><b class="fid"></b> <span class="ft"></span></td><td class="fa"></td><td>${f.cv.toFixed(1)}</td><td><span class="st ${status[0]}">${status[1]}</span></td><td></td>`;
+    tr.querySelector(".fid").textContent = f.id;
+    tr.querySelector(".ft").textContent = f.t;
+    tr.querySelector(".fa").textContent = assetName(f.a);
+    const cb = document.createElement("input"); cb.type = "checkbox";
+    cb.checked = s.fixed.has(f.id); cb.disabled = s.running || s.resolved.has(f.id) || s.steps[3]!==2;
+    cb.title = "Apply remediation";
+    cb.onclick = e => { e.stopPropagation(); cb.checked ? s.fixed.add(f.id) : s.fixed.delete(f.id); onFixChange(); };
+    tr.lastElementChild.appendChild(cb);
+    const det = document.createElement("tr"); det.className = "det"; det.style.display = "none";
+    det.innerHTML = `<td colspan="6"><div><span class="k">Why it matters: </span><span class="dd"></span></div><div style="margin-top:4px"><span class="k">Remediation: </span><span class="ff"></span></div></td>`;
+    det.querySelector(".dd").textContent = f.d; det.querySelector(".ff").textContent = f.f;
+    tr.onclick = () => det.style.display = det.style.display==="none" ? "" : "none";
+    tb.appendChild(tr); tb.appendChild(det);
+  });
+}
+
+function onFixChange(){
+  const s = state[cur];
+  setStep(4, s.fixed.size ? 1 : (s.steps[4]===2?2:1));
+  $("verifyBtn").disabled = !s.fixed.size || [...s.fixed].every(id => s.resolved.has(id));
+  renderFindings();
+}
+
+function termLine(text, cls){
+  const t = $("term");
+  if (t.dataset.fresh !== "0"){ t.innerHTML = ""; t.dataset.fresh = "0"; }
+  const span = document.createElement("span");
+  if (cls) span.className = cls;
+  span.textContent = text + "\n";
+  t.appendChild(span); t.scrollTop = t.scrollHeight;
+}
+const delay = () => [420,260,160,90,40][+$("speed").value-1];
+
+function play(lines, done){
+  let i = 0;
+  const tick = () => {
+    if (i >= lines.length){ timer = null; done(); return; }
+    const L = lines[i++]; if (L.fn) L.fn(); if (L.text !== undefined) termLine(L.text, L.cls);
+    timer = setTimeout(tick, L.pause || delay());
+  };
+  tick();
+}
+
+function runAssessment(){
+  const sc = S[cur]; state[cur] = freshState(); const s = state[cur];
+  s.ran = true; s.running = true;
+  $("term").dataset.fresh = "1"; renderAll(true); lockUI(true);
+  const L = [];
+  L.push({fn:()=>setStep(0,1), text:"[*] STEP 1 — Asset identification", cls:"ph"});
+  sc.assets.forEach(a => L.push({text:`[+] Discovered ${a.name.padEnd(20)} ${a.addr}`}));
+  L.push({fn:()=>{setStep(0,2);setStep(1,1);}, text:"\n[*] STEP 2 — Vulnerability scanning", cls:"ph"});
+  sc.scan.forEach(x => L.push({text:"    "+x, cls: x.startsWith("$") ? "dim" : ""}));
+  L.push({fn:()=>{setStep(1,2);setStep(2,1);}, text:"\n[*] STEP 3 — Vulnerability analysis (matching against checks / CVE data)", cls:"ph"});
+  sc.findings.forEach(f => L.push({fn:()=>{ s.shown.push(f); renderFindings(); renderAssets(); },
+    text:`[!] ${sevOf(f.cv).toUpperCase().padEnd(8)} ${f.id}  ${f.t}`, cls: f.cv>=7 ? "bad" : "warn"}));
+  L.push({fn:()=>{setStep(2,2);setStep(3,1);}, text:"\n[*] STEP 4 — Risk assessment", cls:"ph"});
+  const tot = sc.findings.reduce((t,f)=>t+f.cv,0);
+  const cnt = k => sc.findings.filter(f=>sevOf(f.cv)===k).length;
+  L.push({text:`    ${sc.findings.length} findings → Critical ${cnt("Critical")} · High ${cnt("High")} · Medium ${cnt("Medium")} · Low ${cnt("Low")}`});
+  L.push({text:`    Aggregate risk score ${tot.toFixed(1)} · priority order = CVSS × asset criticality`});
+  L.push({text:`    Top priority: ${[...sc.findings].sort((a,b)=>b.cv-a.cv)[0].id} — fix within 48 h`, cls:"bad"});
+  L.push({fn:()=>{setStep(3,2);setStep(4,1);}, text:"\n[*] STEP 5 — Remediation: tick the findings to fix (or 'Apply all fixes'), then Re-scan & verify.", cls:"ph"});
+  play(L, () => { s.running = false; lockUI(false); $("fixAllBtn").disabled = false; renderFindings(); renderAssets(); });
+}
+
+function verify(){
+  const sc = S[cur], s = state[cur]; s.running = true; lockUI(true);
+  const L = [{fn:()=>{setStep(4,2);setStep(5,1);}, text:"\n[*] STEP 6 — Verification re-scan", cls:"ph"}];
+  [...sc.findings].sort((a,b)=>b.cv-a.cv).forEach(f => {
+    if (s.resolved.has(f.id)) return;
+    if (s.fixed.has(f.id)) L.push({fn:()=>{ s.resolved.add(f.id); renderFindings(); renderAssets(); }, text:`[✓] ${f.id}  ${f.t} — RESOLVED`, cls:"ok"});
+    else L.push({text:`[✗] ${f.id}  ${f.t} — still OPEN`, cls:"bad"});
+  });
+  play(L, () => {
+    const left = sc.findings.filter(f => !s.resolved.has(f.id));
+    const risk = left.reduce((t,f)=>t+f.cv,0);
+    termLine(`    Residual risk score: ${risk.toFixed(1)}  (${left.length} open finding${left.length===1?"":"s"})`, left.length ? "warn" : "ok");
+    if (!left.length){ setStep(5,2); termLine("[✓] All vulnerabilities verified as resolved. Assessment cycle complete.", "ok"); }
+    else { setStep(5,1); termLine("    Remediate the remaining findings and re-scan (the cycle repeats).", "dim"); }
+    s.running = false; lockUI(false); renderFindings(); renderAssets();
+    $("verifyBtn").disabled = true; $("fixAllBtn").disabled = !left.length;
+  });
+}
+
+function lockUI(on){
+  $("runBtn").disabled = on; $("fixAllBtn").disabled = true; $("verifyBtn").disabled = true;
+  document.querySelectorAll(".tab").forEach(t => t.style.opacity = on ? .55 : 1);
+}
+
+/* ---------- code panel ---------- */
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function highlight(code){
+  return code.split("\n").map(line => {
+    const t = line.trim();
+    if (/^(#|!|\/\/)/.test(t) && !t.startsWith("#!/")) return `<span class="c">${esc(line)}</span>`;
+    let h = esc(line);
+    h = h.replace(/\b(def|import|from|return|if|elif|else|for|in|not|and|or|with|as|try|except|while|class|lambda|None|True|False|continue|pass|raise)\b/g,'<span class="k">$1</span>');
+    h = h.replace(/(\s)(#\s.*)$/,'$1<span class="c">$2</span>');
+    return h;
+  }).join("\n");
+}
+function renderCode(){
+  const c = CODE[cur];
+  const names = {scanner:"Scanner (Python)", fix:"Remediation code", setup:"Setup & tools"};
+  $("ctabs").innerHTML = "";
+  Object.keys(names).forEach(k => {
+    const b = document.createElement("button"); b.className = "ctab" + (k===codeTab?" on":"");
+    b.textContent = names[k]; b.onclick = () => { codeTab = k; renderCode(); };
+    $("ctabs").appendChild(b);
+  });
+  $("cnote").textContent = c[codeTab].note;
+  $("src").innerHTML = highlight(c[codeTab].code);
+}
+$("copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(CODE[cur][codeTab].code); $("copyBtn").textContent = "Copied ✓"; }
+  catch(e){ $("copyBtn").textContent = "Select & copy manually"; }
+  setTimeout(() => $("copyBtn").textContent = "Copy code", 1600);
+};
+
+/* ---------- web lab (SQLi + XSS demos) ---------- */
+function renderWebLab(){
+  const box = $("webLab");
+  if (cur !== "web"){ box.style.display = "none"; return; }
+  box.style.display = "";
+  box.innerHTML = `
+  <h3>Interactive lab: see why the code fixes work</h3>
+  <div class="row">
+    <div>
+      <b style="font-size:13.5px">SQL injection: login query</b>
+      <label>Username</label><input id="lu" value="student01">
+      <label>Password</label><input id="lp" value="secret">
+      <div style="font-size:12px;margin-top:8px;color:var(--muted)">Try username: <code>admin' --</code> or <code>' OR '1'='1' --</code></div>
+      <div style="font-size:12px;font-weight:600;margin-top:8px">❌ Vulnerable (string concatenation)</div>
+      <div class="q" id="qv"></div><div class="verdict" id="vv"></div>
+      <div style="font-size:12px;font-weight:600;margin-top:8px">✅ Secure (parameterised)</div>
+      <div class="q" id="qs"></div><div class="verdict good">Input is passed as a bound value and never parsed as SQL.</div>
+    </div>
+    <div>
+      <b style="font-size:13.5px">Cross-site scripting: comment box</b>
+      <label>Comment</label><textarea id="lc">Great lecture notes!</textarea>
+      <div style="font-size:12px;margin-top:8px;color:var(--muted)">Try: <code>&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code> or <code>&lt;img src=x onerror=alert(1)&gt;</code></div>
+      <div style="font-size:12px;font-weight:600;margin-top:8px">❌ Vulnerable: HTML the browser receives (innerHTML)</div>
+      <div class="q" id="xv"></div><div class="verdict" id="xvv"></div>
+      <div style="font-size:12px;font-weight:600;margin-top:8px">✅ Secure: output-encoded HTML (escape)</div>
+      <div class="q" id="xs"></div><div class="verdict good">Special characters become entities and display as plain text.</div>
+    </div>
+  </div>`;
+  const upd = () => {
+    const u = $("lu").value, p = $("lp").value;
+    const qv = $("qv"); qv.innerHTML = "";
+    const add = (t, cls) => { const s = document.createElement("span"); if (cls) s.className = cls; s.textContent = t; qv.appendChild(s); };
+    const part = v => { const i = v.indexOf("'"); if (i < 0) add(v); else { add(v.slice(0,i)); add(v.slice(i), "inj"); } };
+    add("SELECT * FROM users WHERE username = '"); part(u); add("' AND password = '"); part(p); add("'");
+    const injected = /'/.test(u+p);
+    const bypass = /'\s*(or|OR)\s*'?\d?'?\s*=|'\s*--|'\s*#|'\s*;/.test(u+p);
+    const vv = $("vv");
+    vv.className = "verdict " + (injected ? "bad" : "good");
+    vv.textContent = bypass ? "Query logic altered: the WHERE clause is bypassed, giving login without a valid password."
+                   : injected ? "A quote breaks out of the string literal, so the input is now parsed as SQL (syntax error or injection)."
+                   : "Looks fine for this input, but any quote would change the query structure.";
+    $("qs").textContent = `cur.execute("SELECT id, pw_hash FROM users WHERE username = ?", (${JSON.stringify(u)},))`;
+    const c = $("lc").value;
+    $("xv").textContent = `<div class="comment">${c}</div>`;
+    const danger = /<\s*script|on\w+\s*=|javascript:|<\s*iframe|<\s*svg/i.test(c);
+    $("xvv").className = "verdict " + (danger ? "bad" : "good");
+    $("xvv").textContent = danger ? "The browser would EXECUTE this code for every visitor (stored XSS)." : "No active content in this input.";
+    $("xs").textContent = `<div class="comment">${esc(c).replace(/"/g,"&quot;").replace(/'/g,"&#x27;")}</div>`;
+  };
+  ["lu","lp","lc"].forEach(id => $(id).addEventListener("input", upd));
+  upd();
+}
+
+/* ---------- wiring ---------- */
+function renderAll(keepTerm){
+  const sc = S[cur], s = state[cur];
+  renderTabs(); renderSteps();
+  $("sTitle").textContent = sc.title; $("sDesc").textContent = sc.desc; $("envSub").textContent = sc.envSub;
+  renderAssets(); renderFindings(); renderCode(); renderWebLab();
+  if (!keepTerm){
+    $("term").dataset.fresh = "1";
+    $("term").innerHTML = s.ran ? '<span class="dim">Earlier results for this assessment are kept on the right. Press "Run assessment" to start again.</span>'
+                                : '<span class="dim">Press "Run assessment" to start the simulated scan.</span>';
+  }
+  $("runBtn").disabled = false;
+  $("fixAllBtn").disabled = !(s.steps[3]===2 && S[cur].findings.some(f=>!s.resolved.has(f.id)));
+  $("verifyBtn").disabled = !s.fixed.size || [...s.fixed].every(id => s.resolved.has(id));
+}
+$("runBtn").onclick = runAssessment;
+$("fixAllBtn").onclick = () => { const s = state[cur]; S[cur].findings.forEach(f => s.fixed.add(f.id)); onFixChange(); };
+$("verifyBtn").onclick = verify;
+renderAll();
+</script>
+</body>
+</html>

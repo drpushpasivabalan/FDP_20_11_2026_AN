@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Site Scripting (XSS) — Live Demo</title>
+<style>
+  :root{
+    --card:#FDFEFF; --soft:#EFF3FA; --soft2:#E6ECF6;
+    --ink:#273448; --muted:#5A6A82; --faint:#94A2B6;
+    --blue:#2E63CE; --blue-soft:#E3EAFA; --blue-line:#BBCEEF;
+    --orange:#D4863B; --orange-soft:#FBEFDF; --orange-line:#F0D5B0;
+    --good:#2C9566; --good-soft:#DCF0E7; --good-line:#AEDCC5;
+    --bad:#CF6A33; --bad-soft:#FAEADD; --bad-line:#F0CFAE;
+    --line:#D3DCEA; --line2:#E1E7F2;
+    --code-line:#33405A; --code-txt:#CAD6EA;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(162deg,#EBEFF6,#DDE5F0 55%,#D6E0ED);
+       color:var(--ink);font-family:var(--sans);line-height:1.5;padding:26px 18px 60px;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{text-align:center;margin-bottom:18px}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--blue)}
+  h1{font-size:29px;margin:10px 0 6px;font-weight:700;color:#20303F}
+  .sub{color:var(--muted);font-size:15px;max-width:700px;margin:0 auto}
+  .warn{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:11.5px;color:#8A5A14;background:var(--orange-soft);
+        border:1px solid var(--orange-line);padding:4px 12px;border-radius:999px}
+
+  .modebar{display:flex;align-items:center;gap:14px;justify-content:center;margin:18px 0}
+  .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(40,54,69,.06)}
+  .seg button{font-family:var(--sans);font-size:14px;font-weight:600;border:none;background:none;color:var(--muted);
+              padding:9px 18px;border-radius:9px;cursor:pointer;transition:.15s}
+  .seg button.on.vuln{background:var(--bad);color:#fff}
+  .seg button.on.safe{background:var(--good);color:#fff}
+  .modehint{font-size:13px;color:var(--muted)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(40,54,69,.08)}
+  .p-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--soft);border-bottom:1px solid var(--line)}
+  .p-head .h{font-weight:600;font-size:14.5px}
+  .p-head .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
+  .p-body{padding:20px}
+
+  .field label{font-size:12.5px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  textarea#comment{width:100%;margin-top:6px;min-height:72px;resize:vertical;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
+       font-family:var(--mono);font-size:13px;color:#33465A;background:#FCFDFF;outline:none;transition:.15s}
+  textarea#comment:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .postbtn{margin-top:12px;padding:11px 22px;border:none;border-radius:9px;background:var(--blue);color:#fff;
+           font-family:var(--sans);font-weight:600;font-size:14.5px;cursor:pointer;transition:.15s;box-shadow:0 4px 12px rgba(46,99,206,.26)}
+  .postbtn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+
+  .quick{margin-top:18px}
+  .quick .lbl{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--soft);
+        color:var(--ink);cursor:pointer;transition:.15s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip:hover{border-color:var(--blue-line);background:var(--blue-soft)}
+  .chip.attack{border-color:var(--orange-line);background:var(--orange-soft);color:#8A5A14}
+
+  /* comment board */
+  .board{margin-top:4px}
+  .board .lbl{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .cmt{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:10px}
+  .cmt .who{font-size:12px;font-family:var(--mono);color:var(--faint);margin-bottom:4px}
+  .cmt .body{font-size:14px;color:var(--ink);word-break:break-word}
+  .cmt.fired{border-color:var(--bad-line);background:var(--bad-soft)}
+  .cmt .flag{display:inline-block;margin-top:7px;font-family:var(--mono);font-size:11px;color:#7A3A18;background:#F6D9CC;padding:2px 8px;border-radius:6px}
+
+  .seclabel{font-family:var(--mono);font-size:11px;color:var(--muted);margin:0 0 8px;letter-spacing:1px;text-transform:uppercase}
+  .code{background:linear-gradient(180deg,#1E2940,#1A2334);border:1px solid var(--code-line);border-radius:10px;
+        padding:14px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--code-txt);white-space:pre-wrap;word-break:break-word;min-height:54px}
+  .code .tag{color:#73A9FF}.code .danger{color:#FF9D6B;background:rgba(207,106,51,.22);border-radius:3px;padding:0 2px}
+  .code .safechar{color:#6FD0B0}
+  .explain{margin-top:14px;border-radius:10px;padding:12px 15px;font-size:13.5px;display:none;border:1px solid;border-left-width:4px}
+  .explain b{font-weight:700}
+
+  /* fake alert popup */
+  .overlay{position:fixed;inset:0;background:rgba(20,30,45,.45);display:none;align-items:flex-start;justify-content:center;z-index:50}
+  .alert{margin-top:90px;background:#fff;border-radius:12px;width:340px;box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden;animation:drop .2s ease}
+  @keyframes drop{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .alert .bar{background:var(--soft);padding:10px 16px;font-family:var(--mono);font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+  .alert .msg{padding:22px 20px;font-size:15px;color:var(--ink)}
+  .alert .msg .big{font-size:15px;font-weight:600;color:var(--bad)}
+  .alert .act{padding:12px 16px;text-align:right;border-top:1px solid var(--line)}
+  .alert .act button{background:var(--blue);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+  .steal{margin-top:12px;font-family:var(--mono);font-size:11.5px;color:#7A3A18;background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:8px;padding:9px 11px}
+
+  footer{text-align:center;color:var(--faint);font-size:12px;margin-top:24px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Web Security · Live Demo</div>
+    <h1>Cross-Site Scripting (XSS)</h1>
+    <p class="sub">Post a comment to the guestbook. In vulnerable mode the app renders your input as HTML, so a script payload runs. Flip to secure mode to see output encoding stop it.</p>
+    <div class="warn">⚠ Deliberately vulnerable — training only. "Script execution" is simulated safely; no real code runs.</div>
+  </header>
+
+  <div class="modebar">
+    <div class="seg">
+      <button id="mVuln" class="on vuln">Vulnerable (renders HTML)</button>
+      <button id="mSafe">Secure (output-encoded + CSP)</button>
+    </div>
+    <span class="modehint" id="modehint">Input is inserted into the page as raw HTML — injectable.</span>
+  </div>
+
+  <div class="grid">
+    <!-- POST -->
+    <div class="panel">
+      <div class="p-head"><div class="h">💬 ACME Demo Guestbook</div></div>
+      <div class="p-body">
+        <div class="field"><label>Leave a comment</label>
+          <textarea id="comment" placeholder="Write a comment…"></textarea>
+        </div>
+        <button class="postbtn" id="postBtn">Post comment</button>
+
+        <div class="quick">
+          <div class="lbl">Quick-fill</div>
+          <div class="chips">
+            <button class="chip" data-v="Great post, thanks!">Normal comment</button>
+            <button class="chip attack" data-v="&lt;b&gt;bold injection&lt;/b&gt;">&lt;b&gt;HTML injection&lt;/b&gt;</button>
+            <button class="chip attack" data-v="&lt;script&gt;alert('XSS')&lt;/script&gt;">&lt;script&gt;alert('XSS')&lt;/script&gt;</button>
+            <button class="chip attack" data-v="&lt;img src=x onerror=alert('XSS')&gt;">&lt;img onerror&gt;</button>
+            <button class="chip attack" data-v="&lt;script&gt;steal(document.cookie)&lt;/script&gt;">cookie stealer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="panel">
+      <div class="p-head"><div class="h"><span class="dot" id="modeDot" style="background:var(--bad)"></span>What everyone sees</div></div>
+      <div class="p-body">
+        <div class="seclabel">Rendered guestbook (what a visitor's browser shows)</div>
+        <div class="board" id="board"><div class="cmt"><div class="who">guest</div><div class="body">Nice site!</div></div></div>
+
+        <div class="seclabel" style="margin-top:16px">HTML the server sent to the browser</div>
+        <div class="code" id="codeBox"><span style="color:var(--faint)">Post a comment to see the page source.</span></div>
+
+        <div class="explain" id="explain"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>FDP · Cyber Security — cross-site scripting teaching demo</footer>
+</div>
+
+<!-- simulated alert -->
+<div class="overlay" id="overlay">
+  <div class="alert">
+    <div class="bar">internal.acme-demo.local says</div>
+    <div class="msg"><span class="big" id="alertMsg">XSS</span><div class="steal" id="stealBox" style="display:none"></div></div>
+    <div class="act"><button id="alertOk">OK</button></div>
+  </div>
+</div>
+
+<script>
+let secure=false;
+const COOKIE='session=SESS-9f3a71c4e8';   // fake session cookie for the demo
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const decodeEntities=s=>{const t=document.createElement('textarea');t.innerHTML=s;return t.value;};
+
+/* mode */
+function setMode(sec){
+  secure=sec;
+  $('mVuln').classList.toggle('on',!sec);$('mVuln').classList.toggle('vuln',!sec);
+  $('mSafe').classList.toggle('on',sec);$('mSafe').classList.toggle('safe',sec);
+  $('modeDot').style.background=sec?'var(--good)':'var(--bad)';
+  $('modehint').textContent=sec?'Input is HTML-encoded before display — shown as text.':'Input is inserted into the page as raw HTML — injectable.';
+  resetBoard();
+}
+$('mVuln').onclick=()=>setMode(false);
+$('mSafe').onclick=()=>setMode(true);
+
+/* quick-fill (chips hold HTML-escaped text; decode to the real payload) */
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick=()=>{$('comment').value=decodeEntities(c.dataset.v);};
+});
+
+function resetBoard(){
+  $('board').innerHTML='<div class="cmt"><div class="who">guest</div><div class="body">Nice site!</div></div>';
+  $('codeBox').innerHTML='<span style="color:var(--faint)">Post a comment to see the page source.</span>';
+  $('explain').style.display='none';
+}
+
+/* classify the payload */
+function analyze(p){
+  const isScript=/<script[\s>]/i.test(p);
+  const isHandler=/on\w+\s*=/i.test(p);
+  const isJsUri=/javascript:/i.test(p);
+  const isCookie=/document\.cookie|steal\s*\(/i.test(p);
+  const hasTag=/<[a-z][\s\S]*>/i.test(p);
+  return {dangerous:isScript||isHandler||isJsUri, isCookie, hasTag, isScript, isHandler};
+}
+
+/* strip anything that could really execute, so the DEMO stays controlled */
+function safeRender(p){
+  return p.replace(/<script[\s\S]*?<\/script>/gi,'')
+          .replace(/\son\w+\s*=\s*"[^"]*"/gi,'')
+          .replace(/\son\w+\s*=\s*'[^']*'/gi,'')
+          .replace(/\son\w+\s*=\s*[^\s>]+/gi,'')
+          .replace(/javascript:/gi,'');
+}
+
+/* highlight the payload inside the shown HTML source */
+function codeHtml(p){
+  let h=esc(p);
+  if(secure){
+    // encoded: the angle brackets become visible entities
+    return '<span class="tag">&lt;div class="comment"&gt;</span>\n  '
+      + h.replace(/&amp;/g,'<span class="safechar">&amp;amp;</span>')
+         .replace(/&lt;/g,'<span class="safechar">&amp;lt;</span>')
+         .replace(/&gt;/g,'<span class="safechar">&amp;gt;</span>')
+      + '\n<span class="tag">&lt;/div&gt;</span>';
+  }
+  const a=analyze(p);
+  const inner = a.dangerous ? '<span class="danger">'+h+'</span>' : h;
+  return '<span class="tag">&lt;div class="comment"&gt;</span>\n  '+inner+'\n<span class="tag">&lt;/div&gt;</span>';
+}
+
+function post(){
+  const p=$('comment').value;
+  if(!p.trim())return;
+  const a=analyze(p);
+
+  // append a comment to the board
+  const cmt=document.createElement('div');
+  cmt.className='cmt';
+  const who=document.createElement('div');who.className='who';who.textContent='attacker';
+  const body=document.createElement('div');body.className='body';
+  cmt.appendChild(who);cmt.appendChild(body);
+
+  if(secure){
+    body.textContent=p;                       // output encoding: shown as literal text
+  }else{
+    body.innerHTML=safeRender(p);             // vulnerable: HTML renders (script/handlers neutralised for safety, effect simulated)
+    if(a.dangerous){
+      cmt.classList.add('fired');
+      const flag=document.createElement('div');flag.className='flag';
+      flag.textContent='⚡ injected script executed';
+      cmt.appendChild(flag);
+    }
+  }
+  $('board').appendChild(cmt);
+
+  // show the page source
+  $('codeBox').innerHTML=codeHtml(p);
+
+  // explanation + simulated effect
+  const e=$('explain');e.style.display='block';
+  if(secure){
+    e.style.borderColor='var(--good-line)';e.style.background='var(--good-soft)';e.style.color='#1C5E3E';
+    e.style.borderLeftColor='var(--good)';
+    e.innerHTML = a.dangerous
+      ? 'The payload was <b>HTML-encoded</b> on output: <b>&lt;</b> and <b>&gt;</b> became <b>&amp;lt;</b> / <b>&amp;gt;</b>, so the browser shows it as plain text instead of running it. A Content Security Policy blocks inline scripts as a second layer.'
+      : 'A normal comment — nothing to encode, nothing to run.';
+  }else if(a.dangerous){
+    e.style.borderColor='var(--bad-line)';e.style.background='var(--bad-soft)';e.style.color='#7A3A18';
+    e.style.borderLeftColor='var(--bad)';
+    e.innerHTML = a.isCookie
+      ? 'The app wrote your input into the page as raw HTML, so the script ran in the victim\'s browser and <b>read their session cookie</b>. In a real attack it is sent to the attacker\'s server — full account takeover. This is <b>stored XSS</b>: it fires for every visitor who loads the page.'
+      : 'The app inserted your input as raw HTML, so the browser executed it as <b>code</b>, not text. With a real payload this runs in every visitor\'s session — the core of a <b>stored XSS</b> attack.';
+    fireAlert(a.isCookie);
+  }else if(a.hasTag){
+    e.style.borderColor='var(--orange-line)';e.style.background='var(--orange-soft)';e.style.color='#5A4A2E';
+    e.style.borderLeftColor='var(--orange)';
+    e.innerHTML='Your HTML tags were <b>rendered</b> (the text is bold), proving the app injects raw HTML. Swap in a &lt;script&gt; tag and it would execute.';
+  }else{
+    e.style.borderColor='var(--line)';e.style.background='var(--soft)';e.style.color='var(--muted)';
+    e.style.borderLeftColor='var(--orange)';
+    e.innerHTML='A normal comment. Try a &lt;script&gt; payload to see the difference.';
+  }
+  $('comment').value='';
+}
+
+function fireAlert(isCookie){
+  $('alertMsg').textContent='XSS';
+  const s=$('stealBox');
+  if(isCookie){s.style.display='block';s.innerHTML='Attacker captured &rarr; '+COOKIE+'<br>(sent to //evil.test)';}
+  else{s.style.display='none';}
+  $('overlay').style.display='flex';
+}
+$('alertOk').onclick=()=>$('overlay').style.display='none';
+$('overlay').onclick=e=>{if(e.target===$('overlay'))$('overlay').style.display='none';};
+
+$('postBtn').onclick=post;
+</script>
+</body>
+</html>
